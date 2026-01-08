@@ -130,7 +130,27 @@ class ChessGame {
             }
         }
 
+        this.highlightCheckKings();
         this.updateGameInfo();
+    }
+
+    highlightCheckKings() {
+        // Clear previous highlights
+        document.querySelectorAll('.square').forEach(sq => sq.classList.remove('in-check'));
+
+        ['white', 'black'].forEach(color => {
+            if (this.isInCheck(color, this.board)) {
+                const kingPos = this.findKingPosition(this.board, color);
+                if (kingPos) {
+                    const kingSquare = document.querySelector(
+                        `[data-row="${kingPos.row}"][data-col="${kingPos.col}"]`
+                    );
+                    if (kingSquare) {
+                        kingSquare.classList.add('in-check');
+                    }
+                }
+            }
+        });
     }
 
     setupEventListeners() {
@@ -181,6 +201,8 @@ class ChessGame {
                 this.validMoves = [];
                 this.renderBoard();
                 this.switchPlayer();
+                this.evaluateGameState();
+                if (this.gameOver) return;
                 
                 // Robot makes a move after player
                 if (this.gameMode === 'robot' && this.currentPlayer === 'black' && !this.gameOver) {
@@ -227,7 +249,10 @@ class ChessGame {
             }
         }
 
-        if (allMoves.length === 0) return;
+        if (allMoves.length === 0) {
+            this.evaluateGameState();
+            return;
+        }
 
         let selectedMove;
 
@@ -282,6 +307,7 @@ class ChessGame {
         this.movePiece(selectedMove.from.row, selectedMove.from.col, selectedMove.to.row, selectedMove.to.col);
         this.renderBoard();
         this.switchPlayer();
+        this.evaluateGameState();
     }
 
     selectSquare(row, col) {
@@ -317,47 +343,53 @@ class ChessGame {
         });
     }
 
-    getValidMoves(row, col) {
-        const piece = this.board[row][col];
+    getValidMoves(row, col, board = this.board) {
+        const piece = board[row][col];
         if (!piece) return [];
 
         let moves = [];
 
         switch (piece.type) {
             case 'pawn':
-                moves = this.getPawnMoves(row, col, piece.color);
+                moves = this.getPawnMoves(row, col, piece.color, board);
                 break;
             case 'rook':
-                moves = this.getRookMoves(row, col, piece.color);
+                moves = this.getRookMoves(row, col, piece.color, board);
                 break;
             case 'knight':
-                moves = this.getKnightMoves(row, col, piece.color);
+                moves = this.getKnightMoves(row, col, piece.color, board);
                 break;
             case 'bishop':
-                moves = this.getBishopMoves(row, col, piece.color);
+                moves = this.getBishopMoves(row, col, piece.color, board);
                 break;
             case 'queen':
-                moves = this.getQueenMoves(row, col, piece.color);
+                moves = this.getQueenMoves(row, col, piece.color, board);
                 break;
             case 'king':
-                moves = this.getKingMoves(row, col, piece.color);
+                moves = this.getKingMoves(row, col, piece.color, board);
                 break;
         }
 
-        return moves;
+        // Only keep moves that do not leave own king in check
+        const safeMoves = moves.filter(move => {
+            const simulated = this.simulateMove(board, row, col, move.row, move.col);
+            return !this.isInCheck(piece.color, simulated);
+        });
+
+        return safeMoves;
     }
 
-    getPawnMoves(row, col, color) {
+    getPawnMoves(row, col, color, board = this.board) {
         const moves = [];
         const direction = color === 'white' ? -1 : 1;
         const startRow = color === 'white' ? 6 : 1;
 
         // Forward move
-        if (this.isValidPosition(row + direction, col) && !this.board[row + direction][col]) {
+        if (this.isValidPosition(row + direction, col) && !board[row + direction][col]) {
             moves.push({ row: row + direction, col });
 
             // Double move from start
-            if (row === startRow && !this.board[row + 2 * direction][col]) {
+            if (row === startRow && !board[row + 2 * direction][col]) {
                 moves.push({ row: row + 2 * direction, col });
             }
         }
@@ -367,7 +399,7 @@ class ChessGame {
             const newRow = row + direction;
             const newCol = col + offset;
             if (this.isValidPosition(newRow, newCol)) {
-                const target = this.board[newRow][newCol];
+                const target = board[newRow][newCol];
                 if (target && target.color !== color) {
                     moves.push({ row: newRow, col: newCol });
                 }
@@ -377,7 +409,7 @@ class ChessGame {
         return moves;
     }
 
-    getRookMoves(row, col, color) {
+    getRookMoves(row, col, color, board = this.board) {
         const moves = [];
         const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
@@ -386,7 +418,7 @@ class ChessGame {
             let newCol = col + dy;
 
             while (this.isValidPosition(newRow, newCol)) {
-                const target = this.board[newRow][newCol];
+                const target = board[newRow][newCol];
                 if (!target) {
                     moves.push({ row: newRow, col: newCol });
                 } else {
@@ -403,7 +435,7 @@ class ChessGame {
         return moves;
     }
 
-    getKnightMoves(row, col, color) {
+    getKnightMoves(row, col, color, board = this.board) {
         const moves = [];
         const knightMoves = [
             [2, 1], [2, -1], [-2, 1], [-2, -1],
@@ -415,7 +447,7 @@ class ChessGame {
             const newCol = col + dy;
 
             if (this.isValidPosition(newRow, newCol)) {
-                const target = this.board[newRow][newCol];
+                const target = board[newRow][newCol];
                 if (!target || target.color !== color) {
                     moves.push({ row: newRow, col: newCol });
                 }
@@ -425,7 +457,7 @@ class ChessGame {
         return moves;
     }
 
-    getBishopMoves(row, col, color) {
+    getBishopMoves(row, col, color, board = this.board) {
         const moves = [];
         const directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 
@@ -434,7 +466,7 @@ class ChessGame {
             let newCol = col + dy;
 
             while (this.isValidPosition(newRow, newCol)) {
-                const target = this.board[newRow][newCol];
+                const target = board[newRow][newCol];
                 if (!target) {
                     moves.push({ row: newRow, col: newCol });
                 } else {
@@ -451,11 +483,11 @@ class ChessGame {
         return moves;
     }
 
-    getQueenMoves(row, col, color) {
-        return [...this.getRookMoves(row, col, color), ...this.getBishopMoves(row, col, color)];
+    getQueenMoves(row, col, color, board = this.board) {
+        return [...this.getRookMoves(row, col, color, board), ...this.getBishopMoves(row, col, color, board)];
     }
 
-    getKingMoves(row, col, color) {
+    getKingMoves(row, col, color, board = this.board) {
         const moves = [];
         const directions = [
             [0, 1], [0, -1], [1, 0], [-1, 0],
@@ -467,7 +499,7 @@ class ChessGame {
             const newCol = col + dy;
 
             if (this.isValidPosition(newRow, newCol)) {
-                const target = this.board[newRow][newCol];
+                const target = board[newRow][newCol];
                 if (!target || target.color !== color) {
                     moves.push({ row: newRow, col: newCol });
                 }
@@ -479,6 +511,158 @@ class ChessGame {
 
     isValidPosition(row, col) {
         return row >= 0 && row < 8 && col >= 0 && col < 8;
+    }
+
+    cloneBoard(board) {
+        return board.map(row => row.map(cell => (cell ? { ...cell } : null)));
+    }
+
+    simulateMove(board, fromRow, fromCol, toRow, toCol) {
+        const newBoard = this.cloneBoard(board);
+        const piece = newBoard[fromRow][fromCol];
+        newBoard[toRow][toCol] = piece;
+        newBoard[fromRow][fromCol] = null;
+
+        // Handle pawn promotion for simulation consistency
+        if (piece && piece.type === 'pawn') {
+            if ((piece.color === 'white' && toRow === 0) || (piece.color === 'black' && toRow === 7)) {
+                newBoard[toRow][toCol] = {
+                    type: 'queen',
+                    color: piece.color,
+                    symbol: piece.color === 'white' ? '♕' : '♛'
+                };
+            }
+        }
+
+        return newBoard;
+    }
+
+    findKingPosition(board, color) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = board[r][c];
+                if (piece && piece.type === 'king' && piece.color === color) {
+                    return { row: r, col: c };
+                }
+            }
+        }
+        return null;
+    }
+
+    isSquareAttacked(board, row, col, attackerColor) {
+        // Pawn attacks
+        const pawnDir = attackerColor === 'white' ? -1 : 1;
+        const pawnRow = row + pawnDir;
+        for (const c of [col - 1, col + 1]) {
+            if (this.isValidPosition(pawnRow, c)) {
+                const p = board[pawnRow][c];
+                if (p && p.type === 'pawn' && p.color === attackerColor) {
+                    return true;
+                }
+            }
+        }
+
+        // Knights
+        const knightMoves = [
+            [2, 1], [2, -1], [-2, 1], [-2, -1],
+            [1, 2], [1, -2], [-1, 2], [-1, -2]
+        ];
+        for (const [dr, dc] of knightMoves) {
+            const r = row + dr;
+            const c = col + dc;
+            if (this.isValidPosition(r, c)) {
+                const p = board[r][c];
+                if (p && p.type === 'knight' && p.color === attackerColor) {
+                    return true;
+                }
+            }
+        }
+
+        // Directions for rook/queen (straight) and bishop/queen (diagonal)
+        const straightDirs = [[1,0], [-1,0], [0,1], [0,-1]];
+        const diagDirs = [[1,1], [1,-1], [-1,1], [-1,-1]];
+
+        const scan = (dirs, attackers) => {
+            for (const [dr, dc] of dirs) {
+                let r = row + dr;
+                let c = col + dc;
+                while (this.isValidPosition(r, c)) {
+                    const p = board[r][c];
+                    if (p) {
+                        if (p.color === attackerColor && attackers.includes(p.type)) return true;
+                        break;
+                    }
+                    r += dr;
+                    c += dc;
+                }
+            }
+            return false;
+        };
+
+        if (scan(straightDirs, ['rook', 'queen'])) return true;
+        if (scan(diagDirs, ['bishop', 'queen'])) return true;
+
+        // King attacks (adjacent squares)
+        const kingDirs = [...straightDirs, ...diagDirs];
+        for (const [dr, dc] of kingDirs) {
+            const r = row + dr;
+            const c = col + dc;
+            if (this.isValidPosition(r, c)) {
+                const p = board[r][c];
+                if (p && p.type === 'king' && p.color === attackerColor) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    isInCheck(color, board = this.board) {
+        const kingPos = this.findKingPosition(board, color);
+        if (!kingPos) return false;
+        const opponent = color === 'white' ? 'black' : 'white';
+        return this.isSquareAttacked(board, kingPos.row, kingPos.col, opponent);
+    }
+
+    hasAnyLegalMove(color, board = this.board) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = board[r][c];
+                if (piece && piece.color === color) {
+                    const moves = this.getValidMoves(r, c, board);
+                    if (moves.length > 0) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    evaluateGameState() {
+        if (this.gameOver) return;
+        const current = this.currentPlayer;
+        const opponent = current === 'white' ? 'black' : 'white';
+        const inCheck = this.isInCheck(current);
+        const hasMoves = this.hasAnyLegalMove(current);
+
+        const statusElement = document.getElementById('game-status');
+
+        if (!hasMoves) {
+            if (inCheck) {
+                statusElement.textContent = `${opponent.charAt(0).toUpperCase() + opponent.slice(1)} wins by checkmate!`;
+                this.endGame(opponent);
+            } else {
+                statusElement.textContent = 'Stalemate. Draw.';
+                this.gameOver = true;
+            }
+            return;
+        }
+
+        if (inCheck) {
+            statusElement.textContent = `${current.charAt(0).toUpperCase() + current.slice(1)} is in check.`;
+        } else {
+            statusElement.textContent = '';
+        }
     }
 
     movePiece(fromRow, fromCol, toRow, toCol) {
