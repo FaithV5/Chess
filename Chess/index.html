@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Home Screen -->
+    <div id="home-screen" class="screen active">
+        <div class="container home-container">
+            <h1 class="main-title">♔ Chess Game ♔</h1>
+            <p class="subtitle">Test your strategic skills!</p>
+            <button id="play-btn" class="btn-large">Play Now</button>
+        </div>
+    </div>
+
+    <!-- Mode Selection Screen -->
+    <div id="mode-screen" class="screen">
+        <div class="container">
+            <h1>Select Game Mode</h1>
+            <div class="mode-selection">
+                <div class="mode-card" id="mode-robot">
+                    <div class="mode-icon">🤖</div>
+                    <h2>Play with Robot</h2>
+                    <p>Challenge the AI opponent</p>
+                </div>
+                <div class="mode-card" id="mode-human">
+                    <div class="mode-icon">👥</div>
+                    <h2>Play with Human</h2>
+                    <p>Play with a friend locally</p>
+                </div>
+            </div>
+            <button id="back-from-mode" class="btn-back">← Back</button>
+        </div>
+    </div>
+
+    <!-- Difficulty Selection Screen -->
+    <div id="difficulty-screen" class="screen">
+        <div class="container">
+            <h1>Select Difficulty</h1>
+            <div class="difficulty-selection">
+                <div class="difficulty-card" data-difficulty="easy">
+                    <div class="difficulty-icon">😊</div>
+                    <h2>Easy</h2>
+                    <p>Great for beginners</p>
+                </div>
+                <div class="difficulty-card" data-difficulty="medium">
+                    <div class="difficulty-icon">😐</div>
+                    <h2>Medium</h2>
+                    <p>Balanced challenge</p>
+                </div>
+                <div class="difficulty-card" data-difficulty="hard">
+                    <div class="difficulty-icon">😤</div>
+                    <h2>Hard</h2>
+                    <p>For experienced players</p>
+                </div>
+            </div>
+            <button id="back-from-difficulty" class="btn-back">← Back</button>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <div class="container">
+            <h1>Chess Game</h1>
+            <div class="game-mode-display">
+                <span id="mode-display"></span>
+            </div>
+            <div class="game-info">
+                <div class="turn-indicator">
+                    <span id="current-turn">White's Turn</span>
+                </div>
+                <div class="game-status">
+                    <span id="game-status"></span>
+                </div>
+                <div class="game-buttons">
+                    <button id="reset-btn" class="btn">New Game</button>
+                    <button id="back-to-home" class="btn">Main Menu</button>
+                </div>
+            </div>
+            <div id="chess-board"></div>
+            <div class="captured-pieces">
+                <div class="captured-section">
+                    <h3>Captured White Pieces</h3>
+                    <div id="captured-white"></div>
+                </div>
+                <div class="captured-section">
+                    <h3>Captured Black Pieces</h3>
+                    <div id="captured-black"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="chess.js"></script>
+</body>
+</html>
